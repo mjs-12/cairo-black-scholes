@@ -15,14 +15,19 @@ CONTRACT_FILE = os.path.join(
 # Precision used in the black scholes Cairo library.
 UNIT = 1e27
 
+
 def get_precise(value):
     return int(UNIT * value)
 
 # Checks accuracy of the option price (within $0.01).
+
+
 def check_price(got, expected):
-  assert(abs(got - expected) < 0.01)
+    assert(abs(got - expected) < 0.01)
 
 # Returns a random tuple of (t_annualised, volatility, spot, strike, rate)
+
+
 def get_random_test_input():
     # Random time from 10 minutes to 5 years.
     t_annualised = random.uniform(1/52560.0, 5)
@@ -36,6 +41,7 @@ def get_random_test_input():
     rate = random.uniform(0.0001, 0.5)
     return (t_annualised, volatility, spot, strike, rate)
 
+
 @pytest.mark.asyncio
 async def test_randomized_black_scholes_options_prices():
     # Create a new Starknet class that simulates the StarkNet system.
@@ -45,7 +51,7 @@ async def test_randomized_black_scholes_options_prices():
     contract_def = compile_starknet_files(files=[CONTRACT_FILE],
                                           disable_hint_validation=True)
     contract = await starknet.deploy(
-        contract_def=contract_def,
+        contract_class=contract_def,
     )
 
     # Number of random tests to run.
@@ -57,43 +63,43 @@ async def test_randomized_black_scholes_options_prices():
     # Query the contract for options prices.
     tasks = []
     for i in range(ITERATIONS):
-      test_input = get_random_test_input()
-      test_inputs.append(test_input)
-      tasks.append(contract.option_prices(
-          t_annualised=get_precise(test_input[0]),
-          volatility=get_precise(test_input[1]),
-          spot=get_precise(test_input[2]),
-          strike=get_precise(test_input[3]),
-          rate=get_precise(test_input[4])).call())
+        test_input = get_random_test_input()
+        test_inputs.append(test_input)
+        tasks.append(contract.option_prices(
+            t_annualised=get_precise(test_input[0]),
+            volatility=get_precise(test_input[1]),
+            spot=get_precise(test_input[2]),
+            strike=get_precise(test_input[3]),
+            rate=get_precise(test_input[4])).call())
 
     # Compare call and put prices with the python black scholes library.
     print()
     execution_infos = await asyncio.gather(*tasks)
     for i, execution_info in enumerate(execution_infos):
-      (got_call, got_put) = (execution_info.result.call_price/UNIT,
-                             execution_info.result.put_price/UNIT)
+        (got_call, got_put) = (execution_info.result.call_price/UNIT,
+                               execution_info.result.put_price/UNIT)
 
-      (exp_call, exp_put) = (
-          black_scholes('c', test_inputs[i][2], test_inputs[i][3],
-                        test_inputs[i][0], test_inputs[i][4],
-                        test_inputs[i][1]),
-          black_scholes('p', test_inputs[i][2], test_inputs[i][3],
-                        test_inputs[i][0], test_inputs[i][4],
-                        test_inputs[i][1]))
+        (exp_call, exp_put) = (
+            black_scholes('c', test_inputs[i][2], test_inputs[i][3],
+                          test_inputs[i][0], test_inputs[i][4],
+                          test_inputs[i][1]),
+            black_scholes('p', test_inputs[i][2], test_inputs[i][3],
+                          test_inputs[i][0], test_inputs[i][4],
+                          test_inputs[i][1]))
 
-      print()
-      print('Input %d:' % i)
-      print('t_annualised: %.5f years' % test_inputs[i][0])
-      print('volatility: %.5f%%' % (100 * test_inputs[i][1]))
-      print('spot price: $%.5f' % test_inputs[i][2])
-      print('strike price: $%.5f' % test_inputs[i][3])
-      print('interest rate: %.5f%%' % (100 * test_inputs[i][4]))
-      print()
-      print('Result %d:' % i)
-      print('Computed call price: $%0.5f, Expected call price: $%0.5f' % (
-          got_call, exp_call))
-      print('Computed put price: $%0.5f, Expected put price: $%0.5f' % (
-          got_put, exp_put))
+        print()
+        print('Input %d:' % i)
+        print('t_annualised: %.5f years' % test_inputs[i][0])
+        print('volatility: %.5f%%' % (100 * test_inputs[i][1]))
+        print('spot price: $%.5f' % test_inputs[i][2])
+        print('strike price: $%.5f' % test_inputs[i][3])
+        print('interest rate: %.5f%%' % (100 * test_inputs[i][4]))
+        print()
+        print('Result %d:' % i)
+        print('Computed call price: $%0.5f, Expected call price: $%0.5f' % (
+            got_call, exp_call))
+        print('Computed put price: $%0.5f, Expected put price: $%0.5f' % (
+            got_put, exp_put))
 
-      check_price(got_call, exp_call)
-      check_price(got_put, exp_put)
+        check_price(got_call, exp_call)
+        check_price(got_put, exp_put)
